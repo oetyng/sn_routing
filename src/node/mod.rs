@@ -18,6 +18,7 @@ pub use event_stream::EventStream;
 
 use self::stage::Stage;
 use crate::{
+    crypto::Signature,
     error::{Error, Result},
     id::{FullId, P2pNode, PublicId},
     location::{DstLocation, SrcLocation},
@@ -119,6 +120,11 @@ impl Node {
     /// The name of this node.
     pub async fn name(&self) -> XorName {
         *self.id().await.name()
+    }
+
+    /// Sign any data with the key of this node.
+    pub async fn sign(&self, data: &[u8]) -> Signature {
+        self.stage.lock().await.full_id().sign(data)
     }
 
     /// Returns connection info of this node.
