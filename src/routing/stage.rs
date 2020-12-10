@@ -9,6 +9,7 @@
 use super::{bootstrap, Approved, Comm, Command};
 use crate::{error::Result, event::Event, messages::Message, relocation::SignedRelocateDetails};
 use bytes::Bytes;
+use futures::FutureExt;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc, watch, Mutex},
@@ -49,7 +50,7 @@ impl Stage {
     /// Handles the given command and transitively any new commands that are produced during its
     /// handling.
     pub async fn handle_commands(self: Arc<Self>, command: Command) -> Result<()> {
-        let commands = self.handle_command(command).await?;
+        let commands = self.handle_command(command).boxed().await?;
         for command in commands {
             self.clone().spawn_handle_commands(command)
         }
@@ -207,7 +208,9 @@ impl Stage {
         let previous_name = node.name();
 
         let (node, section, backlog) =
-            bootstrap::relocate(node, &self.comm, message_rx, bootstrap_addrs, details).await?;
+            bootstrap::relocate(node, &self.comm, message_rx, bootstrap_addrs, details)
+                .boxed()
+                .await?;
 
         let mut state = self.state.lock().await;
         let event_tx = state.event_tx.clone();

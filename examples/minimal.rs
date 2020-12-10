@@ -33,7 +33,7 @@
 //! command-line option for more details.
 //!
 
-use futures::future::join_all;
+use futures::{future::join_all, FutureExt};
 use hex_fmt::HexFmt;
 use sn_routing::{Config, Event, EventStream, Routing, TransportConfig};
 use std::{
@@ -192,6 +192,7 @@ async fn start_node(
         ..Default::default()
     };
     let (node, event_stream) = Routing::new(config)
+        .boxed()
         .await
         .expect("Failed to instantiate a Node");
 

@@ -38,6 +38,7 @@ use crate::{
 };
 use bytes::Bytes;
 use ed25519_dalek::{Keypair, PublicKey, Signature, Signer};
+use futures::FutureExt;
 use itertools::Itertools;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, task};
@@ -107,7 +108,9 @@ impl Routing {
                 Comm::bootstrap(config.transport_config, connection_event_tx).await?;
             let node = Node::new(keypair, comm.our_connection_info().await?);
             let (node, section, backlog) =
-                bootstrap::initial(node, &comm, &mut connection_event_rx, bootstrap_addr).await?;
+                bootstrap::initial(node, &comm, &mut connection_event_rx, bootstrap_addr)
+                    .boxed()
+                    .await?;
             let state = Approved::new(node, section, None, event_tx);
 
             (state, comm, backlog)
