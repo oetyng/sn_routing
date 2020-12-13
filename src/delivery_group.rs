@@ -51,9 +51,9 @@ pub(crate) fn delivery_targets(
 
     let (best_section, dg_size) = match dst {
         DstLocation::Node(target_name) => {
-            if target_name == our_name {
-                return Ok((Vec::new(), 0));
-            }
+            // if target_name == our_name {
+            //     return Ok((Vec::new(), 0));
+            // }
             if let Some(node) = get_peer(target_name, section, network) {
                 return Ok((vec![*node], 1));
             }
@@ -74,7 +74,7 @@ pub(crate) fn delivery_targets(
                 // should confirm if needed esp after msg_relay changes.
                 let section: Vec<_> = info
                     .peers()
-                    .filter(|node| node.name() != our_name)
+                    //.filter(|node| node.name() != our_name)
                     .copied()
                     .collect();
                 let dg_size = section.len();
