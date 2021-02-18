@@ -410,10 +410,16 @@ async fn handle_connection_events(
 }
 
 async fn handle_message(stage: Arc<Stage>, bytes: Bytes, sender: SocketAddr) {
+    let span = {
+        let state = stage.state.lock().await;
+        trace_span!("handle_message", name = %state.node().name(), %sender)
+    };
+    let _span_guard = span.enter();
+
     let message_type = match WireMsg::deserialize(bytes) {
         Ok(message_type) => message_type,
         Err(error) => {
-            error!("Failed to deserialize message from {}: {}", sender, error);
+            error!("Failed to deserialize message: {}", error);
             return;
         }
     };
@@ -436,10 +442,7 @@ async fn handle_message(stage: Arc<Stage>, bytes: Bytes, sender: SocketAddr) {
                     let _ = task::spawn(stage.handle_commands(command));
                 }
                 Err(error) => {
-                    error!(
-                        "Error occurred when deserialising node message bytes from {}: {}",
-                        sender, error
-                    );
+                    error!("Failed to deserialize node message: {}", error);
                 }
             }
         }
