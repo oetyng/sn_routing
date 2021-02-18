@@ -26,7 +26,7 @@ use sn_messaging::{
     DstLocation, MessageType, WireMsg,
 };
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
     mem,
     net::SocketAddr,
 };
@@ -137,7 +137,11 @@ impl<'a> State<'a> {
         mut bootstrap_addrs: Vec<SocketAddr>,
         relocate_details: Option<&SignedRelocateDetails>,
     ) -> Result<(Prefix, bls::PublicKey, BTreeMap<XorName, SocketAddr>)> {
+        // Avoid sending more than one request to the same peer.
+        let mut used_addrs = HashSet::new();
+
         loop {
+            used_addrs.extend(bootstrap_addrs.iter().copied());
             self.send_get_section_request(mem::take(&mut bootstrap_addrs), relocate_details)
                 .await?;
 
@@ -156,12 +160,19 @@ impl<'a> State<'a> {
                     );
                     return Ok((prefix, key, elders));
                 }
-                GetSectionResponse::Redirect(new_bootstrap_addrs) => {
-                    info!(
-                        "Bootstrapping redirected to another set of peers: {:?}",
-                        new_bootstrap_addrs,
-                    );
-                    bootstrap_addrs = new_bootstrap_addrs.to_vec();
+                GetSectionResponse::Redirect(mut new_bootstrap_addrs) => {
+                    // Ignore already used addresses
+                    new_bootstrap_addrs.retain(|addr| !used_addrs.contains(addr));
+
+                    if new_bootstrap_addrs.is_empty() {
+                        debug!("Bootstrapping redirected to the same set of peers we already contacted - ignoring");
+                    } else {
+                        info!(
+                            "Bootstrapping redirected to another set of peers: {:?}",
+                            new_bootstrap_addrs,
+                        );
+                        bootstrap_addrs = new_bootstrap_addrs;
+                    }
                 }
                 GetSectionResponse::SectionInfoUpdate(error) => {
                     error!("Infrastructure error: {:?}", error);
@@ -175,6 +186,10 @@ impl<'a> State<'a> {
         recipients: Vec<SocketAddr>,
         relocate_details: Option<&SignedRelocateDetails>,
     ) -> Result<()> {
+        if recipients.is_empty() {
+            return Ok(());
+        }
+
         debug!("{} Sending GetSectionQuery to {:?}", self.node, recipients);
 
         let destination = match relocate_details {
@@ -213,7 +228,7 @@ impl<'a> State<'a> {
                             return Ok((response, sender))
                         }
                     }
-                }
+                },
                 MessageType::NodeMessage(NodeMessage(msg_bytes)) => {
                     let message = Message::from_bytes(Bytes::from(msg_bytes))?;
                     self.backlog_message(message, sender)
