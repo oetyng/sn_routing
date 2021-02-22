@@ -338,11 +338,13 @@ impl Network {
                 RoutingEvent::Relocated { .. } => {
                     if let Some(Node::Joined {
                         node,
+                        name,
                         age,
                         is_relocating,
                         ..
                     }) = self.nodes.get_mut(&id)
                     {
+                        *name = node.name().await;
                         *age = node.age().await;
                         *is_relocating = false;
                         self.stats.relocation_successes += 1;
