@@ -190,7 +190,7 @@ impl<'a> State<'a> {
             return Ok(());
         }
 
-        debug!("{} Sending GetSectionQuery to {:?}", self.node, recipients);
+        debug!("Sending GetSectionQuery to {:?}", recipients);
 
         let destination = match relocate_details {
             Some(details) => *details.destination(),
