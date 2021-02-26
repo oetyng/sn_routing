@@ -457,23 +457,20 @@ impl Network {
             },
         };
         let bytes = bincode::serialize(&message)?.into();
-        
+
         // There can be a significant delay between a node being relocated and us receiving the
         // `Relocated` event. Using the current node name instead of the one reported by the last
         // `Relocated` event reduced send errors due to src location mismatch which would cause the
         // section health to appear lower than it actually is.
         let src = node.name().await;
-        
+
         let itry = Itinerary {
             src: SrcLocation::Node(src),
             dst: DstLocation::Section(dst),
             aggregation: Aggregation::None,
         };
 
-        match node
-            .send_message(itry, bytes)
-            .await
-        {
+        match node.send_message(itry, bytes).await {
             Ok(()) => Ok(true),
             Err(RoutingError::InvalidSrcLocation) => Ok(false), // node name changed
             Err(error) => Err(error.into()),

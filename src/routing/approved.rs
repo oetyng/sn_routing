@@ -91,7 +91,7 @@ impl Approved {
         Ok(Self::new(node, section, Some(section_key_share), event_tx))
     }
 
-    pub fn section_chain(&self) -> SectionProofChain {
+    pub fn section_chain(&self) -> SectionChain {
         self.section.chain().clone()
     }
 
@@ -2127,7 +2127,7 @@ impl Approved {
                 self.section_keys_provider.key_share()?,
                 itry.dst,
                 content,
-                self.section().create_proof_chain_for_our_info(None),
+                self.section().chain().to_owned(),
                 None,
                 self.section().prefix().name(),
             )?

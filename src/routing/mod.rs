@@ -206,7 +206,7 @@ impl Routing {
     }
 
     /// Returns the Section Proof Chain
-    pub async fn section_chain(&self) -> SectionProofChain {
+    pub async fn section_chain(&self) -> SectionChain {
         self.stage.state.lock().await.section_chain()
     }
 
