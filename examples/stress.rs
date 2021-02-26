@@ -20,7 +20,10 @@ use rand::{
     Rng,
 };
 use serde::{Deserialize, Serialize};
-use sn_messaging::{DstLocation, SrcLocation};
+use sn_messaging::{
+    location::{Aggregation, Itinerary},
+    DstLocation, SrcLocation,
+};
 use sn_routing::{
     Config, Error as RoutingError, Event as RoutingEvent, NodeElderChange, Routing, TransportConfig,
 };
@@ -355,7 +358,6 @@ impl Network {
                     let dst = match dst {
                         DstLocation::Section(name) => name,
                         DstLocation::Node(name) => name,
-                        DstLocation::AccumulatingNode(name) => name,
                         DstLocation::Direct | DstLocation::EndUser(_) => {
                             return Err(format_err!("unexpected probe message dst: {:?}", dst))
                         }
@@ -455,15 +457,21 @@ impl Network {
             },
         };
         let bytes = bincode::serialize(&message)?.into();
-
+        
         // There can be a significant delay between a node being relocated and us receiving the
         // `Relocated` event. Using the current node name instead of the one reported by the last
         // `Relocated` event reduced send errors due to src location mismatch which would cause the
         // section health to appear lower than it actually is.
         let src = node.name().await;
+        
+        let itry = Itinerary {
+            src: SrcLocation::Node(src),
+            dst: DstLocation::Section(dst),
+            aggregation: Aggregation::None,
+        };
 
         match node
-            .send_message(SrcLocation::Node(src), DstLocation::Section(dst), bytes)
+            .send_message(itry, bytes)
             .await
         {
             Ok(()) => Ok(true),
