@@ -17,7 +17,7 @@ use crate::{
     },
     crypto, delivery_group,
     error::{Error, Result},
-    event::{Event, NodeElderChange},
+    event::{ElderKnowledge, Event, NodeElderStatus},
     message_filter::MessageFilter,
     messages::{
         JoinRequest, Message, MessageHash, MessageStatus, PlainMessage, ResourceProofResponse,
@@ -1806,26 +1806,32 @@ impl Approved {
                 None
             };
 
-            let self_status_change = if !old_is_elder && new_is_elder {
-                info!("Promoted to elder");
-                NodeElderChange::Promoted
-            } else if old_is_elder && !new_is_elder {
+            let node_elder_change = if old_is_elder && !new_is_elder {
                 info!("Demoted");
                 self.section = self.section.trimmed(1);
                 self.network = Network::new();
                 self.section_keys_provider = SectionKeysProvider::new(KEY_CACHE_SIZE, None);
-                NodeElderChange::Demoted
+                NodeElderStatus::Demoted
             } else {
-                NodeElderChange::None
+                let elder_knowledge = ElderKnowledge {
+                    prefix: *self.section.prefix(),
+                    section_key_set: self.public_key_set()?,
+                    our_key_set_index: self.our_index()?,
+                    sibling_key,
+                    elders: self.section.elders_info().elders.keys().copied().collect(),
+                    section_chain: self.section.chain().to_owned(),
+                };
+                if !old_is_elder && new_is_elder {
+                    info!("Promoted to elder");
+                    NodeElderStatus::Promoted(elder_knowledge)
+                } else if old_is_elder && new_is_elder {
+                    NodeElderStatus::StillElder(elder_knowledge)
+                } else {
+                    NodeElderStatus::StillAdult
+                }
             };
 
-            self.send_event(Event::EldersChanged {
-                prefix: *self.section.prefix(),
-                key: *self.section.chain().last_key(),
-                sibling_key,
-                elders: self.section.elders_info().elders.keys().copied().collect(),
-                self_status_change,
-            });
+            self.send_event(Event::EldersChanged(node_elder_change));
         }
 
         if !new_is_elder {

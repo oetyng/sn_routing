@@ -6,6 +6,8 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
+use crate::SectionChain;
+use bls::PublicKeySet;
 use bytes::Bytes;
 use ed25519_dalek::Keypair;
 use hex_fmt::HexFmt;
@@ -19,16 +21,37 @@ use std::{
 };
 use xor_name::{Prefix, XorName};
 
-/// A flag in EldersChanged event, indicating
+/// A flag in events, indicating
 /// whether the node got promoted, demoted or did not change.
+/// Carries the current knowledge as of current Elder constellation.
 #[derive(Debug)]
-pub enum NodeElderChange {
+pub enum NodeElderStatus {
     /// The node was promoted to Elder.
-    Promoted,
-    /// The node was demoted to Adult.
+    Promoted(ElderKnowledge),
+    /// The node was demoted from Elder to Adult.
     Demoted,
-    /// There was no change to the node.
-    None,
+    /// Node is still an Elder.
+    StillElder(ElderKnowledge),
+    /// Node is still an Adult.
+    StillAdult,
+}
+
+#[derive(Debug, Clone)]
+/// The info passed to upper layers when an Elder.
+pub struct ElderKnowledge {
+    /// The prefix of our section.
+    pub prefix: Prefix,
+    /// The BLS public key set of our section.
+    pub section_key_set: PublicKeySet,
+    /// Our index in the BLS public key set of our section.
+    pub our_key_set_index: usize,
+    /// The BLS public key of the sibling section, if this event is fired during a split.
+    /// Otherwise `None`.
+    pub sibling_key: Option<bls::PublicKey>,
+    /// The set of elders of our section.
+    pub elders: BTreeSet<XorName>,
+    /// The section chain.
+    pub section_chain: SectionChain,
 }
 
 /// An Event raised by a `Node` or `Client` via its event sender.
@@ -69,19 +92,7 @@ pub enum Event {
         age: u8,
     },
     /// The set of elders in our section has changed.
-    EldersChanged {
-        /// The prefix of our section.
-        prefix: Prefix,
-        /// The BLS public key of our section.
-        key: bls::PublicKey,
-        /// The BLS public key of the sibling section, if this event is fired during a split.
-        /// Otherwise `None`.
-        sibling_key: Option<bls::PublicKey>,
-        /// The set of elders of our section.
-        elders: BTreeSet<XorName>,
-        /// Promoted, demoted or no change?
-        self_status_change: NodeElderChange,
-    },
+    EldersChanged(NodeElderStatus),
     /// This node has started relocating to other section. Will be followed by
     /// `Relocated` when the node finishes joining the destination section.
     RelocationStarted {
@@ -137,20 +148,9 @@ impl Debug for Event {
                 .field("name", name)
                 .field("age", age)
                 .finish(),
-            Self::EldersChanged {
-                prefix,
-                key,
-                sibling_key,
-                elders,
-                self_status_change,
-            } => formatter
-                .debug_struct("EldersChanged")
-                .field("prefix", prefix)
-                .field("key", key)
-                .field("sibling_key", sibling_key)
-                .field("elders", elders)
-                .field("self_status_change", self_status_change)
-                .finish(),
+            Self::EldersChanged(node_elder_change) => {
+                write!(formatter, "EldersChanged({:?})", node_elder_change)
+            }
             Self::RelocationStarted { previous_name } => formatter
                 .debug_struct("RelocationStarted")
                 .field("previous_name", previous_name)
