@@ -17,7 +17,7 @@ use crate::{
     },
     crypto, delivery_group,
     error::{Error, Result},
-    event::{Event, NodeElderChange},
+    event::{Elders, Event, NodeElderChange},
     message_filter::MessageFilter,
     messages::{
         JoinRequest, Message, MessageHash, MessageStatus, PlainMessage, ResourceProofResponse,
@@ -1770,8 +1770,20 @@ impl Approved {
                 commands.extend(self.send_sync(self.section.clone(), self.network.clone())?);
             }
 
-            let sibling_key = if new_prefix != old_prefix {
-                self.section_key(&new_prefix.sibling()).copied()
+            let sibling_elders = if new_prefix != old_prefix {
+                if let Some(sibling_key) = self.section_key(&new_prefix.sibling()).copied() {
+                    if let Some(info) = self.network.get(&new_prefix.sibling()).cloned() {
+                        Some(Elders {
+                            prefix: new_prefix.sibling(),
+                            key: sibling_key,
+                            elders: info.elders.keys().copied().collect(),
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             } else {
                 None
             };
@@ -1789,11 +1801,15 @@ impl Approved {
                 NodeElderChange::None
             };
 
-            self.send_event(Event::EldersChanged {
+            let elders = Elders {
                 prefix: new_prefix,
                 key: new_last_key,
-                sibling_key,
                 elders: self.section.elders_info().elders.keys().copied().collect(),
+            };
+
+            self.send_event(Event::EldersChanged {
+                elders,
+                sibling_elders,
                 self_status_change,
             });
         }
