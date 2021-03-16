@@ -43,14 +43,9 @@ use ed25519_dalek::Verifier;
 use itertools::Itertools;
 use resource_proof::ResourceProof;
 use sn_data_types::PublicKey as EndUserPK;
-use sn_messaging::{
-    client::Message as ClientMessage,
-    node::NodeMessage,
-    section_info::{
+use sn_messaging::{Aggregation, DstLocation, EndUser, HeaderInfo, Itinerary, MessageType, SrcLocation, client::Message as ClientMessage, node::NodeMessage, section_info::{
         Error as TargetSectionError, GetSectionResponse, Message as SectionInfoMsg, SectionInfo,
-    },
-    Aggregation, DstLocation, EndUser, Itinerary, MessageType, SrcLocation,
-};
+    }};
 use std::{
     cmp::{self, Ordering},
     iter,
@@ -2137,6 +2132,10 @@ impl Approved {
             commands.push(Command::HandleMessage {
                 sender: Some(self.node.addr),
                 message: msg.clone(),
+                hdr_info: HeaderInfo{
+                    dest_section_pk: itinerary,
+                    dest: itinerary.dst.name()
+                }
             });
         }
 
