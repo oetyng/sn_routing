@@ -297,15 +297,8 @@ impl Routing {
         name: &XorName,
     ) -> (Option<bls::PublicKey>, Option<EldersInfo>) {
         let state = self.stage.state.lock().await;
-        if state.section().prefix().matches(name) {
-            let section = state.section();
-            (
-                Some(*section.chain().last_key()),
-                Some(section.elders_info().clone()),
-            )
-        } else {
-            state.network().section_by_name(name)
-        }
+
+        state.match_section(name).await
     }
 
     /// Send a message.
