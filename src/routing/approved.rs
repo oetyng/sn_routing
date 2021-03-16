@@ -354,7 +354,7 @@ impl Approved {
         }
     }
 
-    pub fn handle_consensus(&mut self, vote: Vote, proof: Proof) -> Result<Vec<Command>> {
+    pub async fn handle_consensus(&mut self, vote: Vote, proof: Proof) -> Result<Vec<Command>> {
         debug!("handle consensus on {:?}", vote);
 
         match vote {
@@ -378,7 +378,7 @@ impl Approved {
                 *message,
                 proof_chain,
                 proof,
-            )?]),
+            ).await?]),
             Vote::JoinsAllowed(joins_allowed) => {
                 self.joins_allowed = joins_allowed;
                 Ok(vec![])
@@ -1678,17 +1678,48 @@ impl Approved {
         self.network.update_knowledge(knowledge)
     }
 
-    fn handle_send_message_event(
+    async fn handle_send_message_event(
         &self,
         message: PlainMessage,
         proof_chain: SectionChain,
         proof: Proof,
     ) -> Result<Command> {
         let message = Message::section_src(message, proof.signature, proof_chain)?;
+        let hdr_info = match message.dst() {
+            DstLocation::EndUser(end_user) => {
+                let pk = end_user.id();
+                let xorname = &XorName::from(*pk);
+                let (section_pk, _) = self.match_section(xorname).await;
+                if let Some(pk) = section_pk {
+                    Some(HeaderInfo {
+                        dest_section_pk: pk,
+                        dest: *xorname,
+                    })
+                } else {
+                    warn!("No section pk found matching name {:?}", xorname);
+                    None
+                }
+            }
+            DstLocation::Node(xorname) | DstLocation::Section(xorname) => {
+                let (section_pk, _) = self.match_section(&xorname).await;
 
+                if let Some(pk) = section_pk {
+                    Some(HeaderInfo {
+                        dest_section_pk: pk,
+                        dest: *xorname,
+                    })
+                } else {
+                    warn!("No section pk found matching name {:?}", xorname);
+                    None
+                }
+            }
+            // direct message...
+            None => None,
+        };
         Ok(Command::HandleMessage {
             message,
             sender: None,
+            hdr_info
         })
     }
 
