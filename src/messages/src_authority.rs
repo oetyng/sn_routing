@@ -57,8 +57,12 @@ pub enum SrcAuthority {
 impl SrcAuthority {
     pub(crate) fn src_location(&self) -> SrcLocation {
         match self {
-            Self::Node { public_key, .. } => SrcLocation::Node(name(public_key)),
-            Self::BlsShare { public_key, .. } => SrcLocation::Node(name(public_key)),
+            Self::Node { public_key, .. } => {
+                SrcLocation::Node(name(&sn_data_types::PublicKey::from(*public_key)))
+            }
+            Self::BlsShare { public_key, .. } => {
+                SrcLocation::Node(name(&sn_data_types::PublicKey::from(*public_key)))
+            }
             Self::Section { prefix, .. } => SrcLocation::Section(prefix.name()),
         }
     }
@@ -69,8 +73,10 @@ impl SrcAuthority {
 
     pub(crate) fn to_node_name(&self) -> Result<XorName> {
         match self {
-            Self::Node { public_key, .. } => Ok(name(public_key)),
-            Self::BlsShare { public_key, .. } => Ok(name(public_key)),
+            Self::Node { public_key, .. } => Ok(name(&sn_data_types::PublicKey::from(*public_key))),
+            Self::BlsShare { public_key, .. } => {
+                Ok(name(&sn_data_types::PublicKey::from(*public_key)))
+            }
             Self::Section { .. } => Err(Error::InvalidSrcLocation),
         }
     }
@@ -84,7 +90,11 @@ impl SrcAuthority {
             }
             | Self::BlsShare {
                 public_key, age, ..
-            } => Ok(Peer::new(name(public_key), addr, *age)),
+            } => Ok(Peer::new(
+                name(&sn_data_types::PublicKey::from(*public_key)),
+                addr,
+                *age,
+            )),
         }
     }
 
