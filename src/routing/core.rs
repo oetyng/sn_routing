@@ -2276,7 +2276,6 @@ impl Core {
             let proof_chain =
                 self.create_proof_chain(&itinerary.dst, additional_proof_chain_key)?;
             Message::for_dst_accumulation(
-                &self.node,
                 self.section_keys_provider.key_share()?,
                 itinerary.src.name(),
                 itinerary.dst,
@@ -2332,7 +2331,6 @@ impl Core {
             err
         })?;
         let message = Message::for_dst_accumulation(
-            &self.node,
             key_share,
             src,
             dst,
