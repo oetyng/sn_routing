@@ -74,11 +74,11 @@ impl Debug for DkgKey {
 ///
 /// 1. First the current elders propose the new elder candidates in the form of `EldersInfo`
 ///    structure.
-/// 2. They send an accumulating message `DKGStart` containing this proposed `EldersInfo` to the
+/// 2. They send an accumulating message `DkgStart` containing this proposed `EldersInfo` to the
 ///    new elders candidates (DKG participants).
-/// 3. When the `DKGStart` message accumulates, the participants call `start`.
+/// 3. When the `DkgStart` message accumulates, the participants call `start`.
 /// 4. The participants keep exchanging the DKG messages and calling `process_message`.
-/// 5. On DKG completion, the participants send `DKGResult` vote to the current elders (observers)
+/// 5. On DKG completion, the participants send `DkgResult` vote to the current elders (observers)
 /// 6. When the observers accumulate the votes, they can proceed with voting for the section update.
 ///
 /// Note: in case of heavy churn, it can happen that more than one DKG session completes
@@ -589,7 +589,7 @@ impl DkgCommand {
                 dkg_key,
                 message,
             } => {
-                let variant = Variant::DKGMessage { dkg_key, message };
+                let variant = Variant::DkgMessage { dkg_key, message };
                 let message = Message::single_src(node, DstLocation::Direct, variant, None, None)?;
 
                 Ok(Command::send_message_to_nodes(
@@ -617,7 +617,7 @@ impl DkgCommand {
                 dkg_key,
                 proof,
             } => {
-                let variant = Variant::DKGFailureObservation { dkg_key, proof };
+                let variant = Variant::DkgFailureObservation { dkg_key, proof };
                 let message = Message::single_src(node, DstLocation::Direct, variant, None, None)?;
 
                 Ok(Command::send_message_to_nodes(

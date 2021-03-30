@@ -472,7 +472,7 @@ async fn handle_consensus_on_online_of_elder_candidate() -> Result<()> {
         .handle_command(Command::HandleConsensus { vote, proof })
         .await?;
 
-    // Verify we sent a `DKGStart` message with the expected participants.
+    // Verify we sent a `DkgStart` message with the expected participants.
     let mut dkg_start_sent = false;
 
     for command in commands {
@@ -494,7 +494,7 @@ async fn handle_consensus_on_online_of_elder_candidate() -> Result<()> {
         };
 
         let actual_elders_info = match &message.variant {
-            Variant::DKGStart { elders_info, .. } => elders_info,
+            Variant::DkgStart { elders_info, .. } => elders_info,
             _ => continue,
         };
 
@@ -743,7 +743,7 @@ async fn handle_consensus_on_offline_of_elder() -> Result<()> {
         .handle_command(Command::HandleConsensus { vote, proof })
         .await?;
 
-    // Verify we sent a `DKGStart` message with the expected participants.
+    // Verify we sent a `DkgStart` message with the expected participants.
     let mut dkg_start_sent = false;
 
     for command in commands {
@@ -765,7 +765,7 @@ async fn handle_consensus_on_offline_of_elder() -> Result<()> {
         };
 
         let actual_elders_info = match &message.variant {
-            Variant::DKGStart { elders_info, .. } => elders_info,
+            Variant::DkgStart { elders_info, .. } => elders_info,
             _ => continue,
         };
 

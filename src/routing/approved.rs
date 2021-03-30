@@ -490,7 +490,7 @@ impl Approved {
     }
 
     pub fn handle_dkg_failure(&mut self, proofs: DkgFailureProofSet) -> Result<Command> {
-        let variant = Variant::DKGFailureAgreement(proofs);
+        let variant = Variant::DkgFailureAgreement(proofs);
         let message = Message::single_src(&self.node, DstLocation::Direct, variant, None, None)?;
         Ok(self.send_message_to_our_elders(message.to_bytes()))
     }
@@ -629,7 +629,7 @@ impl Approved {
                     return Ok(MessageStatus::Useless);
                 }
             }
-            Variant::DKGStart { elders_info, .. } => {
+            Variant::DkgStart { elders_info, .. } => {
                 if !elders_info.elders.contains_key(&self.node.name()) {
                     return Ok(MessageStatus::Useless);
                 }
@@ -663,9 +663,9 @@ impl Approved {
             Variant::Relocate(_)
             | Variant::BouncedUntrustedMessage(_)
             | Variant::BouncedUnknownMessage { .. }
-            | Variant::DKGMessage { .. }
-            | Variant::DKGFailureObservation { .. }
-            | Variant::DKGFailureAgreement { .. }
+            | Variant::DkgMessage { .. }
+            | Variant::DkgFailureObservation { .. }
+            | Variant::DkgFailureAgreement { .. }
             | Variant::ResourceChallenge { .. } => {}
         }
 
@@ -737,17 +737,17 @@ impl Approved {
                     src_key,
                 )
             }
-            Variant::DKGStart {
+            Variant::DkgStart {
                 dkg_key,
                 elders_info,
             } => self.handle_dkg_start(*dkg_key, elders_info.clone()),
-            Variant::DKGMessage { dkg_key, message } => {
+            Variant::DkgMessage { dkg_key, message } => {
                 self.handle_dkg_message(*dkg_key, message.clone(), msg.src().to_node_name()?)
             }
-            Variant::DKGFailureObservation { dkg_key, proof } => {
+            Variant::DkgFailureObservation { dkg_key, proof } => {
                 self.handle_dkg_failure_observation(*dkg_key, *proof)
             }
-            Variant::DKGFailureAgreement(proofs) => {
+            Variant::DkgFailureAgreement(proofs) => {
                 self.handle_dkg_failure_agreement(&msg.src().to_node_name()?, proofs)
             }
             Variant::Vote {
@@ -1453,7 +1453,7 @@ impl Approved {
         dkg_key: DkgKey,
         new_elders_info: EldersInfo,
     ) -> Result<Vec<Command>> {
-        trace!("Received DKGStart for {}", new_elders_info);
+        trace!("Received DkgStart for {}", new_elders_info);
         self.dkg_voter
             .start(&self.node.keypair, dkg_key, new_elders_info)
             .into_commands(&self.node, *self.section_chain().last_key())
@@ -2117,11 +2117,11 @@ impl Approved {
         elders_info: EldersInfo,
         recipients: &[Peer],
     ) -> Result<Vec<Command>> {
-        trace!("Send DKGStart for {} to {:?}", elders_info, recipients);
+        trace!("Send DkgStart for {} to {:?}", elders_info, recipients);
 
         let generation = self.section.chain().main_branch_len() as u64;
         let dkg_key = DkgKey::new(&elders_info, generation);
-        let variant = Variant::DKGStart {
+        let variant = Variant::DkgStart {
             dkg_key,
             elders_info,
         };
