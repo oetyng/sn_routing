@@ -223,12 +223,6 @@ fn run_node(index: usize, mut node: Routing, mut event_stream: EventStream) -> J
 // Handles the event emitted by the node.
 async fn handle_event(index: usize, node: &mut Routing, event: Event) -> bool {
     match event {
-        Event::Genesis => {
-            info!("Node #{} is Genesis", index);
-        }
-        Event::PromotedToAdult => {
-            info!("Node #{} promoted to Adult", index);
-        }
         Event::MemberJoined {
             name,
             previous_name,

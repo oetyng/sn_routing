@@ -40,8 +40,6 @@ pub enum NodeElderChange {
 /// been reached, i.e. enough members of the section have sent the same message.
 #[allow(clippy::large_enum_variant)]
 pub enum Event {
-    /// This is the very first node in a network.
-    Genesis,
     /// Received a message.
     MessageReceived {
         /// The content of the message.
@@ -51,8 +49,6 @@ pub enum Event {
         /// The destination location that receives the message.
         dst: DstLocation,
     },
-    /// The node has been promoted to adult
-    PromotedToAdult,
     /// A new peer joined our section.
     MemberJoined {
         /// Name of the node
@@ -115,7 +111,6 @@ pub enum Event {
 impl Debug for Event {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Genesis => write!(formatter, "Genesis"),
             Self::MessageReceived { content, src, dst } => write!(
                 formatter,
                 "MessageReceived {{ content: \"{:<8}\", src: {:?}, dst: {:?} }}",
@@ -123,7 +118,6 @@ impl Debug for Event {
                 src,
                 dst
             ),
-            Self::PromotedToAdult => write!(formatter, "PromotedToAdult"),
             Self::MemberJoined {
                 name,
                 previous_name,
