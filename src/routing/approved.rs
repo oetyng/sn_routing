@@ -433,7 +433,7 @@ impl Approved {
                 }),
             })
         } else {
-            return None;
+            None
         }
     }
 
@@ -684,11 +684,9 @@ impl Approved {
         self.msg_filter.insert_incoming(&msg);
 
         let src_name = match msg.src() {
-            SrcAuthority::Node { public_key, .. } => {
-                crypto::name(&PublicKey::from(public_key.clone()))
-            }
+            SrcAuthority::Node { public_key, .. } => crypto::name(&PublicKey::from(*public_key)),
             SrcAuthority::BlsShare { public_key, .. } => {
-                crypto::name(&PublicKey::from(public_key.clone()))
+                crypto::name(&PublicKey::from(*public_key))
             }
             SrcAuthority::Section { prefix, .. } => prefix.name(),
         };
@@ -891,11 +889,9 @@ impl Approved {
         msg: Message,
     ) -> Result<Command> {
         let src_name = match msg.src() {
-            SrcAuthority::Node { public_key, .. } => {
-                crypto::name(&PublicKey::from(public_key.clone()))
-            }
+            SrcAuthority::Node { public_key, .. } => crypto::name(&PublicKey::from(*public_key)),
             SrcAuthority::BlsShare { public_key, .. } => {
-                crypto::name(&PublicKey::from(public_key.clone()))
+                crypto::name(&PublicKey::from(*public_key))
             }
             SrcAuthority::Section { prefix, .. } => prefix.name(),
         };
@@ -939,7 +935,7 @@ impl Approved {
         sender: Option<SocketAddr>,
         msg_bytes: Bytes,
     ) -> Result<Command> {
-        let src_key = self.section.chain().last_key().clone();
+        let src_key = *self.section.chain().last_key();
         let bounce_msg = Message::single_src(
             &self.node,
             DstLocation::Direct,
@@ -1024,7 +1020,7 @@ impl Approved {
         };
 
         let hdr_info = HeaderInfo {
-            dest: sender.name().clone(),
+            dest: *sender.name(),
             dest_section_pk: dst_key,
         };
         trace!("resending with extended proof");
@@ -2017,7 +2013,7 @@ impl Approved {
         let (elders, non_elders): (Vec<_>, _) = section
             .active_members()
             .filter(|peer| peer.name() != &self.node.name())
-            .map(|peer| (peer.addr().clone(), peer.name().clone()))
+            .map(|peer| (*peer.addr(), *peer.name()))
             .partition(|peer| section.is_elder(&peer.1));
 
         // Send the trimmed state to non-elders. The trimmed state contains only the latest
@@ -2368,10 +2364,10 @@ impl Approved {
             .section
             .elders_info()
             .peers()
-            .map(|peer| (peer.addr().clone(), peer.name().clone()))
+            .map(|peer| (*peer.addr(), *peer.name()))
             .collect();
 
-        let dest_section_pk = self.section_chain().last_key().clone();
+        let dest_section_pk = *self.section_chain().last_key();
 
         let hdr_info = HeaderInfo {
             dest: self.section.prefix().name(),
