@@ -62,7 +62,7 @@ pub(crate) enum Vote {
     // destination.
     AccumulateAtSrc {
         message: Box<PlainMessage>,
-        proof_chain: SectionChain,
+        proof_chain: Option<SectionChain>,
     },
 
     // Voted to concensus whether new node shall be allowed to join
