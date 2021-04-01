@@ -220,7 +220,7 @@
 <span class="doccomment">/// been reached, i.e. enough members of the section have sent the same message.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">large_enum_variant</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Event</span> {
-    <span class="doccomment">/// This is the very first node in a network.</span>
+    <span class="doccomment">/// The first node of a network.</span>
     <span class="ident">Genesis</span>,
     <span class="doccomment">/// Received a message.</span>
     <span class="ident">MessageReceived</span> {
@@ -230,8 +230,8 @@
         <span class="ident">src</span>: <span class="ident">SrcLocation</span>,
         <span class="doccomment">/// The destination location that receives the message.</span>
         <span class="ident">dst</span>: <span class="ident">DstLocation</span>,
-        <span class="doccomment">/// The proof chain for the message.</span>
-        <span class="ident">proof_chain</span>: <span class="ident">SectionChain</span>,
+        <span class="doccomment">/// The proof chain for the message, if any.</span>
+        <span class="ident">proof_chain</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SectionChain</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// A new peer joined our section.</span>
     <span class="ident">MemberJoined</span> {
