@@ -16,7 +16,8 @@ use crate::{
     peer::Peer,
     relocation::{RelocatePayload, SignedRelocateDetails},
     section::{EldersInfo, Section, SectionChain},
-    FIRST_SECTION_MAX_AGE, FIRST_SECTION_MIN_AGE,
+    ELDER_SIZE, FIRST_SECTION_MAX_AGE, FIRST_SECTION_MAX_ELDER_AGE, FIRST_SECTION_MIN_AGE,
+    FIRST_SECTION_MIN_ELDER_AGE,
 };
 use bytes::Bytes;
 use futures::future;
@@ -125,12 +126,18 @@ impl<'a> State<'a> {
             .bootstrap(bootstrap_addrs, relocate_details.as_ref())
             .await?;
 
+        let (min_age, max_age) = if prefix.is_empty() && elders.len() < ELDER_SIZE {
+            (FIRST_SECTION_MIN_ELDER_AGE, FIRST_SECTION_MAX_ELDER_AGE)
+        } else {
+            (FIRST_SECTION_MIN_AGE, FIRST_SECTION_MAX_AGE)
+        };
+
         // For the first section, using age random among 6 to 100 to avoid relocating too many nodes
         // at the same time.
-        if prefix.is_empty() && self.node.name()[XOR_NAME_LEN - 1] < FIRST_SECTION_MIN_AGE {
-            let age: u8 = (FIRST_SECTION_MIN_AGE..FIRST_SECTION_MAX_AGE)
+        if prefix.is_empty() && self.node.name()[XOR_NAME_LEN - 1] < min_age {
+            let age: u8 = (min_age..max_age)
                 .choose(&mut rand::thread_rng())
-                .unwrap_or(FIRST_SECTION_MAX_AGE);
+                .unwrap_or(max_age);
 
             let new_keypair = crypto::gen_keypair(&Prefix::default().range_inclusive(), age);
             let new_name = crypto::name(&new_keypair.public);

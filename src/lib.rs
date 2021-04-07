@@ -75,8 +75,8 @@ pub use self::{
     event::{Event, NodeElderChange, SendStream},
     routing::{Config, EventStream, Routing},
     section::{
-        SectionChain, SectionChainError, FIRST_SECTION_MAX_AGE, FIRST_SECTION_MIN_AGE,
-        MIN_ADULT_AGE, MIN_AGE,
+        SectionChain, SectionChainError, FIRST_SECTION_MAX_AGE, FIRST_SECTION_MAX_ELDER_AGE,
+        FIRST_SECTION_MIN_AGE, FIRST_SECTION_MIN_ELDER_AGE, MIN_ADULT_AGE, MIN_AGE,
     },
 };
 pub use qp2p::Config as TransportConfig;
@@ -105,7 +105,7 @@ mod section;
 /// More nodes might be added if requested by the upper layers.
 /// This number also detemines when split happens - if both post-split sections would have at least
 /// this number of nodes.
-pub const RECOMMENDED_SECTION_SIZE: usize = 2 * ELDER_SIZE;
+pub const RECOMMENDED_SECTION_SIZE: usize = ELDER_SIZE + supermajority(ELDER_SIZE);
 
 /// Number of elders per section.
 pub const ELDER_SIZE: usize = 7;

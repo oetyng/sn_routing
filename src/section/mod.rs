@@ -18,7 +18,8 @@ pub(crate) use self::section_peers::SectionPeers;
 pub use self::{
     elders_info::EldersInfo,
     member_info::{
-        MemberInfo, PeerState, FIRST_SECTION_MAX_AGE, FIRST_SECTION_MIN_AGE, MIN_ADULT_AGE, MIN_AGE,
+        MemberInfo, PeerState, FIRST_SECTION_MAX_AGE, FIRST_SECTION_MAX_ELDER_AGE,
+        FIRST_SECTION_MIN_AGE, FIRST_SECTION_MIN_ELDER_AGE, MIN_ADULT_AGE, MIN_AGE,
     },
     section_chain::{Error as SectionChainError, SectionChain},
     section_keys::{SectionKeyShare, SectionKeysProvider},

@@ -1,4 +1,4 @@
-// Copyright 2019 MaidSafe.net limited.
+// Copyright 2021 MaidSafe.net limited.
 //
 // This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
 // Unless required by applicable law or agreed to in writing, the SAFE Network Software distributed
@@ -22,7 +22,11 @@ pub const MIN_ADULT_AGE: u8 = MIN_AGE + 1;
 /// Defines the lower bound of this range.
 pub const FIRST_SECTION_MIN_AGE: u8 = MIN_ADULT_AGE + 1;
 /// Defines the higher bound of this range.
-pub const FIRST_SECTION_MAX_AGE: u8 = 100;
+pub const FIRST_SECTION_MAX_AGE: u8 = 99;
+/// Defines the higher bound of this range.
+pub const FIRST_SECTION_MIN_ELDER_AGE: u8 = 100;
+/// Defines the higher bound of this range.
+pub const FIRST_SECTION_MAX_ELDER_AGE: u8 = 254;
 
 /// Information about a member of our section.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Debug)]
