@@ -52,7 +52,7 @@ use sn_messaging::{
     section_info::{
         Error as TargetSectionError, GetSectionResponse, Message as SectionInfoMsg, SectionInfo,
     },
-    DstLocation, EndUser, HeaderInfo, Itinerary, MessageType, SrcLocation,
+    DestInfo, DstLocation, EndUser, Itinerary, MessageType, SrcLocation,
 };
 use std::{
     cmp::{self, Ordering},
@@ -289,11 +289,11 @@ impl Core {
         &mut self,
         sender: SocketAddr,
         message: SectionInfoMsg,
-        hdr_info: HeaderInfo, // The HeaderInfo contains the XorName of the sender and a random PK during the initial SectionQuery,
+        dest_info: DestInfo, // The DestInfo contains the XorName of the sender and a random PK during the initial SectionQuery,
     ) -> Vec<Command> {
         // Provide our PK as the dest PK, only redundant as the message itself contains details regarding relocation/registration.
-        let hdr_info = HeaderInfo {
-            dest: hdr_info.dest,
+        let dest_info = DestInfo {
+            dest: dest_info.dest,
             dest_section_pk: *self.section().chain().last_key(),
         };
 
@@ -339,7 +339,7 @@ impl Core {
                     delivery_group_size: 1,
                     message: MessageType::SectionInfo {
                         msg: response,
-                        hdr_info,
+                        dest_info,
                     },
                 }]
             }
@@ -367,7 +367,7 @@ impl Core {
                     delivery_group_size: 1,
                     message: MessageType::SectionInfo {
                         msg: response,
-                        hdr_info,
+                        dest_info,
                     },
                 }]
             }
@@ -378,7 +378,7 @@ impl Core {
                         .send((
                             MessageType::SectionInfo {
                                 msg: message,
-                                hdr_info,
+                                dest_info,
                             },
                             sender,
                         ))
@@ -473,7 +473,7 @@ impl Core {
             Some(Command::SendMessage {
                 recipients: vec![(addr, *peer.name())],
                 delivery_group_size: 1,
-                message: MessageType::Ping(HeaderInfo {
+                message: MessageType::Ping(DestInfo {
                     dest: *peer.name(),
                     dest_section_pk: *self.section.chain().last_key(),
                 }),
@@ -837,7 +837,7 @@ impl Core {
                             .send((
                                 MessageType::NodeMessage {
                                     msg: node_msg,
-                                    hdr_info: HeaderInfo {
+                                    dest_info: DestInfo {
                                         dest: src_name,
                                         dest_section_pk: *self.section.chain().last_key(),
                                     },
@@ -964,14 +964,14 @@ impl Core {
         let bounce_msg = bounce_msg.to_bytes();
 
         if let Some(sender) = sender {
-            let hdr_info = HeaderInfo {
+            let dest_info = DestInfo {
                 dest: src_name,
                 dest_section_pk: bounce_dst_key,
             };
             Ok(Command::send_message_to_node(
                 (sender, src_name),
                 bounce_msg,
-                hdr_info,
+                dest_info,
             ))
         } else {
             Ok(self.send_message_to_our_elders(bounce_msg))
@@ -1008,7 +1008,7 @@ impl Core {
                 .any(|peer| peer.addr() == sender)
         });
 
-        let hdr_info = HeaderInfo {
+        let dest_info = DestInfo {
             dest: self.section.prefix().name(),
             dest_section_pk: src_key,
         };
@@ -1017,7 +1017,7 @@ impl Core {
             Ok(Command::send_message_to_node(
                 (sender, self.section.prefix().name()),
                 bounce_msg,
-                hdr_info,
+                dest_info,
             ))
         } else {
             Ok(self.send_message_to_our_elders(bounce_msg))
@@ -1070,7 +1070,7 @@ impl Core {
                 })?,
         };
 
-        let hdr_info = HeaderInfo {
+        let dest_info = DestInfo {
             dest: *sender.name(),
             dest_section_pk: dst_key,
         };
@@ -1078,7 +1078,7 @@ impl Core {
         Ok(Command::send_message_to_node(
             (*sender.addr(), *sender.name()),
             resend_msg.to_bytes(),
-            hdr_info,
+            dest_info,
         ))
     }
 
@@ -1123,7 +1123,7 @@ impl Core {
             Command::send_message_to_node(
                 (*sender.addr(), *sender.name()),
                 bounced_msg_bytes,
-                HeaderInfo {
+                DestInfo {
                     dest: *sender.name(),
                     dest_section_pk: *sender_last_key,
                 },
@@ -1182,7 +1182,7 @@ impl Core {
                 delivery_group_size: 1,
                 message: MessageType::ClientMessage {
                     msg: ClientMessage::from(content)?,
-                    hdr_info: HeaderInfo {
+                    dest_info: DestInfo {
                         dest: name,
                         dest_section_pk: *self.section.chain().last_key(),
                     },
@@ -1808,7 +1808,7 @@ impl Core {
                     sync_recipients,
                     len,
                     sync_message.to_bytes(),
-                    HeaderInfo {
+                    DestInfo {
                         dest: XorName::random(),
                         dest_section_pk: proof.public_key.clone(),
                     },
@@ -2033,7 +2033,7 @@ impl Core {
         Ok(Command::send_message_to_node(
             (addr, name),
             message.to_bytes(),
-            HeaderInfo {
+            DestInfo {
                 dest: name,
                 dest_section_pk: *self.section.chain().last_key(),
             },
@@ -2046,7 +2046,7 @@ impl Core {
 
             let message =
                 Message::single_src(&self.node, DstLocation::Direct, variant, None, None)?;
-            let hdr_info = HeaderInfo {
+            let dest_info = DestInfo {
                 dest: XorName::random(),
                 dest_section_pk: *self.section.chain().last_key(),
             };
@@ -2054,7 +2054,7 @@ impl Core {
                 recipients.clone(),
                 recipients.len(),
                 message.to_bytes(),
-                hdr_info,
+                dest_info,
             ))
         };
 
@@ -2196,7 +2196,7 @@ impl Core {
             targets,
             dg_size,
             msg.to_bytes(),
-            HeaderInfo {
+            DestInfo {
                 dest: XorName::random(),
                 dest_section_pk: dest_pk,
             },
@@ -2370,7 +2370,7 @@ impl Core {
         }
 
         if !others.is_empty() {
-            let hdr_info = HeaderInfo {
+            let dest_info = DestInfo {
                 dest: XorName::random(),
                 dest_section_pk: *self.section.chain().last_key(),
             };
@@ -2379,7 +2379,7 @@ impl Core {
                 others,
                 count,
                 message.to_bytes(),
-                hdr_info,
+                dest_info,
             ));
         }
 
@@ -2430,7 +2430,7 @@ impl Core {
         Ok(Command::send_message_to_node(
             recipient,
             message.to_bytes(),
-            HeaderInfo {
+            DestInfo {
                 dest: recipient.1,
                 dest_section_pk: dst_pk,
             },
@@ -2449,12 +2449,12 @@ impl Core {
 
         let dest_section_pk = *self.section_chain().last_key();
 
-        let hdr_info = HeaderInfo {
+        let dest_info = DestInfo {
             dest: self.section.prefix().name(),
             dest_section_pk,
         };
 
-        Command::send_message_to_nodes(targets.clone(), targets.len(), msg, hdr_info)
+        Command::send_message_to_nodes(targets.clone(), targets.len(), msg, dest_info)
     }
 
     ////////////////////////////////////////////////////////////////////////////

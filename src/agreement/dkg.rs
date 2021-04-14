@@ -20,7 +20,7 @@ use bls_dkg::key_gen::{message::Message as DkgMessage, KeyGen};
 use hex_fmt::HexFmt;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sn_messaging::{DstLocation, HeaderInfo};
+use sn_messaging::{DestInfo, DstLocation};
 use std::{
     collections::{HashMap, VecDeque},
     fmt::{self, Debug, Formatter},
@@ -603,7 +603,7 @@ impl DkgCommand {
                     recipients.clone(),
                     recipients.len(),
                     message.to_bytes(),
-                    HeaderInfo {
+                    DestInfo {
                         dest: XorName::random(),
                         dest_section_pk: key,
                     },
@@ -631,7 +631,7 @@ impl DkgCommand {
                     recipients.clone(),
                     recipients.len(),
                     message.to_bytes(),
-                    HeaderInfo {
+                    DestInfo {
                         dest: XorName::random(),
                         dest_section_pk: key,
                     },
