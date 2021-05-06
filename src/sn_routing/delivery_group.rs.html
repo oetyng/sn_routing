@@ -454,6 +454,46 @@
 <span id="453">453</span>
 <span id="454">454</span>
 <span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="comment">// Copyright 2021 MaidSafe.net limited.</span>
 <span class="comment">//</span>
@@ -470,7 +510,7 @@
     <span class="ident">network</span>::<span class="ident">Network</span>,
     <span class="ident">peer</span>::<span class="ident">Peer</span>,
     <span class="ident">section</span>::<span class="ident">Section</span>,
-    <span class="ident">ELDER_SIZE</span>,
+    <span class="ident">supermajority</span>, <span class="ident">ELDER_SIZE</span>,
 };
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">sn_messaging</span>::<span class="ident">DstLocation</span>;
@@ -568,35 +608,42 @@
         .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">lhs</span>.<span class="ident">prefix</span>.<span class="ident">cmp_distance</span>(<span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">prefix</span>, <span class="ident">target_name</span>))
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">info</span><span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">info</span>.<span class="ident">prefix</span>, <span class="ident">info</span>.<span class="ident">elders</span>.<span class="ident">len</span>(), <span class="ident">info</span>.<span class="ident">elders</span>.<span class="ident">values</span>()));
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">ELDER_SIZE</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodes_to_send</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="comment">// gives at least 1 honest target among recipients.</span>
+    <span class="kw">let</span> <span class="ident">min_dg_size</span> <span class="op">=</span> <span class="number">1</span> <span class="op">+</span> <span class="ident">ELDER_SIZE</span> <span class="op">-</span> <span class="ident">supermajority</span>(<span class="ident">ELDER_SIZE</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">min_dg_size</span>;
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> (<span class="ident">idx</span>, (<span class="ident">prefix</span>, <span class="ident">len</span>, <span class="ident">connected</span>)) <span class="kw">in</span> <span class="ident">sections</span>.<span class="ident">enumerate</span>() {
-        <span class="ident">nodes_to_send</span>.<span class="ident">extend</span>(<span class="ident">connected</span>.<span class="ident">cloned</span>());
-        <span class="comment">// If we don&#39;t have enough contacts send to as many as possible</span>
-        <span class="comment">// up to majority of Elders</span>
-        <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">len</span>, <span class="ident">dg_size</span>);
-        <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> <span class="ident">ELDER_SIZE</span> {
+        <span class="ident">candidates</span>.<span class="ident">extend</span>(<span class="ident">connected</span>.<span class="ident">cloned</span>());
+        <span class="kw">if</span> <span class="ident">prefix</span>.<span class="ident">matches</span>(<span class="ident">target_name</span>) {
+            <span class="comment">// If we are last hop before final dst, send to all candidates.</span>
+            <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">len</span>;
+        } <span class="kw">else</span> {
+            <span class="comment">// If we don&#39;t have enough contacts send to as many as possible</span>
+            <span class="comment">// up to dg_size of Elders</span>
+            <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">len</span>, <span class="ident">dg_size</span>);
+        }
+        <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> <span class="ident">min_dg_size</span> {
             <span class="macro">warn</span><span class="macro">!</span>(
                 <span class="string">&quot;Delivery group only {:?} when it should be {:?}&quot;</span>,
-                <span class="ident">len</span>, <span class="ident">ELDER_SIZE</span>
+                <span class="ident">len</span>, <span class="ident">min_dg_size</span>
             )
         }
 
         <span class="kw">if</span> <span class="ident">prefix</span> <span class="op">=</span><span class="op">=</span> <span class="ident">section</span>.<span class="ident">prefix</span>() {
             <span class="comment">// Send to all connected targets so they can forward the message</span>
-            <span class="ident">nodes_to_send</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">name</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">our_name</span>);
-            <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">nodes_to_send</span>.<span class="ident">len</span>();
+            <span class="ident">candidates</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">name</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">our_name</span>);
+            <span class="ident">dg_size</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">len</span>();
             <span class="kw">break</span>;
         }
-        <span class="kw">if</span> <span class="ident">idx</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">nodes_to_send</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">dg_size</span> {
+        <span class="kw">if</span> <span class="ident">idx</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">candidates</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">dg_size</span> {
             <span class="comment">// can deliver to enough of the closest section</span>
             <span class="kw">break</span>;
         }
     }
-    <span class="ident">nodes_to_send</span>.<span class="ident">sort_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">target_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()));
+    <span class="ident">candidates</span>.<span class="ident">sort_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">target_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()));
 
-    <span class="kw">if</span> <span class="ident">dg_size</span> <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">nodes_to_send</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">dg_size</span> {
-        <span class="prelude-val">Ok</span>((<span class="ident">nodes_to_send</span>, <span class="ident">dg_size</span>))
+    <span class="kw">if</span> <span class="ident">dg_size</span> <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">candidates</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">dg_size</span> {
+        <span class="prelude-val">Ok</span>((<span class="ident">candidates</span>, <span class="ident">dg_size</span>))
     } <span class="kw">else</span> {
         <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">CannotRoute</span>)
     }
@@ -611,29 +658,6 @@
         .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">network</span>.<span class="ident">get_elder</span>(<span class="ident">name</span>))
 }
 
-<span class="comment">// Returns the set of peers that are responsible for collecting signatures to verify a message;</span>
-<span class="comment">// this may contain us or only other nodes.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature_targets</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">DstLocation</span>, <span class="ident">our_elders</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Peer</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Peer</span><span class="op">&gt;</span>,
-{
-    <span class="kw">let</span> <span class="ident">dst_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">dst</span> {
-        <span class="ident">DstLocation</span>::<span class="ident">Node</span>(<span class="ident">name</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">name</span>,
-        <span class="ident">DstLocation</span>::<span class="ident">Section</span>(<span class="ident">name</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">name</span>,
-        <span class="ident">DstLocation</span>::<span class="ident">EndUser</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">DstLocation</span>::<span class="ident">Direct</span> <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Invalid destination for signature targets: {:?}&quot;</span>, <span class="ident">dst</span>);
-            <span class="kw">return</span> <span class="macro">vec</span><span class="macro">!</span>[];
-        }
-    };
-
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">our_elders</span>
-        .<span class="ident">into_iter</span>()
-        .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">dst_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()))
-        .<span class="ident">collect</span>();
-    <span class="ident">list</span>.<span class="ident">truncate</span>(<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">list</span>.<span class="ident">len</span>(), <span class="ident">ELDER_SIZE</span>));
-    <span class="ident">list</span>
-}
-
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -642,7 +666,7 @@
         <span class="ident">crypto</span>,
         <span class="ident">section</span>::{
             <span class="ident">test_utils</span>::{<span class="ident">gen_addr</span>, <span class="ident">gen_elders_info</span>},
-            <span class="ident">EldersInfo</span>, <span class="ident">MemberInfo</span>, <span class="ident">SectionChain</span>, <span class="ident">MIN_AGE</span>,
+            <span class="ident">EldersInfo</span>, <span class="ident">MemberInfo</span>, <span class="ident">SectionChain</span>, <span class="ident">MIN_ADULT_AGE</span>,
         },
     };
     <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">Context</span>, <span class="prelude-ty">Result</span>};
@@ -675,7 +699,7 @@
     <span class="kw">fn</span> <span class="ident">delivery_targets_elder_to_our_adult</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">our_name</span>, <span class="kw-2">mut</span> <span class="ident">section</span>, <span class="ident">network</span>, <span class="ident">sk</span>) <span class="op">=</span> <span class="ident">setup_elder</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">crypto</span>::<span class="ident">gen_name_with_age</span>(<span class="ident">MIN_AGE</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">crypto</span>::<span class="ident">gen_name_with_age</span>(<span class="ident">MIN_ADULT_AGE</span>);
         <span class="kw">let</span> <span class="ident">dst_name</span> <span class="op">=</span> <span class="ident">section</span>.<span class="ident">prefix</span>().<span class="ident">substituted_in</span>(<span class="ident">name</span>);
         <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">Peer</span>::<span class="ident">new</span>(<span class="ident">dst_name</span>, <span class="ident">gen_addr</span>());
         <span class="kw">let</span> <span class="ident">member_info</span> <span class="op">=</span> <span class="ident">MemberInfo</span>::<span class="ident">joined</span>(<span class="ident">peer</span>);
@@ -731,7 +755,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_to_unknown_remote_peer</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_to_final_hop_unknown_remote_peer</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">our_name</span>, <span class="ident">section</span>, <span class="ident">network</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_elder</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">elders_info1</span> <span class="op">=</span> <span class="ident">network</span>
@@ -753,7 +777,34 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_to_remote_section</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="attribute">#[<span class="ident">ignore</span> <span class="op">=</span> <span class="string">&quot;Need to setup network so that we do not locate final dst, as to trigger correct outcome.&quot;</span>]</span>
+    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_to_intermediary_hop_unknown_remote_peer</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">our_name</span>, <span class="ident">section</span>, <span class="ident">network</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_elder</span>()<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">elders_info1</span> <span class="op">=</span> <span class="ident">network</span>
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">Prefix</span>::<span class="ident">default</span>().<span class="ident">pushed</span>(<span class="bool-val">true</span>))
+            .<span class="ident">context</span>(<span class="string">&quot;unknown section&quot;</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">dst_name</span> <span class="op">=</span> <span class="ident">elders_info1</span>
+            .<span class="ident">prefix</span>
+            .<span class="ident">pushed</span>(<span class="bool-val">false</span>)
+            .<span class="ident">substituted_in</span>(<span class="ident">rand</span>::<span class="ident">random</span>());
+        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">DstLocation</span>::<span class="ident">Node</span>(<span class="ident">dst_name</span>);
+        <span class="kw">let</span> (<span class="ident">recipients</span>, <span class="ident">dg_size</span>) <span class="op">=</span> <span class="ident">delivery_targets</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>, <span class="kw-2">&amp;</span><span class="ident">our_name</span>, <span class="kw-2">&amp;</span><span class="ident">section</span>, <span class="kw-2">&amp;</span><span class="ident">network</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Send to all elders in the dst section</span>
+        <span class="kw">let</span> <span class="ident">expected_recipients</span> <span class="op">=</span> <span class="ident">elders_info1</span>
+            .<span class="ident">peers</span>()
+            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">dst_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()));
+        <span class="kw">let</span> <span class="ident">min_dg_size</span> <span class="op">=</span> <span class="number">1</span> <span class="op">+</span> <span class="ident">elders_info1</span>.<span class="ident">elders</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">supermajority</span>(<span class="ident">elders_info1</span>.<span class="ident">elders</span>.<span class="ident">len</span>());
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dg_size</span>, <span class="ident">min_dg_size</span>);
+        <span class="ident">itertools</span>::<span class="ident">assert_equal</span>(<span class="kw-2">&amp;</span><span class="ident">recipients</span>, <span class="ident">expected_recipients</span>);
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_final_hop_to_remote_section</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">our_name</span>, <span class="ident">section</span>, <span class="ident">network</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_elder</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">elders_info1</span> <span class="op">=</span> <span class="ident">network</span>
@@ -764,11 +815,40 @@
         <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">DstLocation</span>::<span class="ident">Section</span>(<span class="ident">dst_name</span>);
         <span class="kw">let</span> (<span class="ident">recipients</span>, <span class="ident">dg_size</span>) <span class="op">=</span> <span class="ident">delivery_targets</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>, <span class="kw-2">&amp;</span><span class="ident">our_name</span>, <span class="kw-2">&amp;</span><span class="ident">section</span>, <span class="kw-2">&amp;</span><span class="ident">network</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Send to all elders in the dst section</span>
+        <span class="comment">// Send to all elders in the final dst section</span>
         <span class="kw">let</span> <span class="ident">expected_recipients</span> <span class="op">=</span> <span class="ident">elders_info1</span>
             .<span class="ident">peers</span>()
             .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">dst_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()));
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dg_size</span>, <span class="ident">elders_info1</span>.<span class="ident">elders</span>.<span class="ident">len</span>());
+        <span class="ident">itertools</span>::<span class="ident">assert_equal</span>(<span class="kw-2">&amp;</span><span class="ident">recipients</span>, <span class="ident">expected_recipients</span>);
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="attribute">#[<span class="ident">ignore</span> <span class="op">=</span> <span class="string">&quot;Need to setup network so that we do not locate final dst, as to trigger correct outcome.&quot;</span>]</span>
+    <span class="kw">fn</span> <span class="ident">delivery_targets_elder_intermediary_hop_to_remote_section</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">our_name</span>, <span class="ident">section</span>, <span class="ident">network</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_elder</span>()<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">elders_info1</span> <span class="op">=</span> <span class="ident">network</span>
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">Prefix</span>::<span class="ident">default</span>().<span class="ident">pushed</span>(<span class="bool-val">true</span>))
+            .<span class="ident">context</span>(<span class="string">&quot;unknown section&quot;</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">dst_name</span> <span class="op">=</span> <span class="ident">elders_info1</span>
+            .<span class="ident">prefix</span>
+            .<span class="ident">pushed</span>(<span class="bool-val">false</span>)
+            .<span class="ident">substituted_in</span>(<span class="ident">rand</span>::<span class="ident">random</span>());
+        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">DstLocation</span>::<span class="ident">Section</span>(<span class="ident">dst_name</span>);
+        <span class="kw">let</span> (<span class="ident">recipients</span>, <span class="ident">dg_size</span>) <span class="op">=</span> <span class="ident">delivery_targets</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>, <span class="kw-2">&amp;</span><span class="ident">our_name</span>, <span class="kw-2">&amp;</span><span class="ident">section</span>, <span class="kw-2">&amp;</span><span class="ident">network</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Send to a subset of elders in the intermediary dst section</span>
+        <span class="kw">let</span> <span class="ident">min_dg_size</span> <span class="op">=</span> <span class="number">1</span> <span class="op">+</span> <span class="ident">elders_info1</span>.<span class="ident">elders</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">supermajority</span>(<span class="ident">elders_info1</span>.<span class="ident">elders</span>.<span class="ident">len</span>());
+        <span class="kw">let</span> <span class="ident">expected_recipients</span> <span class="op">=</span> <span class="ident">elders_info1</span>
+            .<span class="ident">peers</span>()
+            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">dst_name</span>.<span class="ident">cmp_distance</span>(<span class="ident">lhs</span>.<span class="ident">name</span>(), <span class="ident">rhs</span>.<span class="ident">name</span>()))
+            .<span class="ident">take</span>(<span class="ident">min_dg_size</span>);
+
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dg_size</span>, <span class="ident">min_dg_size</span>);
         <span class="ident">itertools</span>::<span class="ident">assert_equal</span>(<span class="kw-2">&amp;</span><span class="ident">recipients</span>, <span class="ident">expected_recipients</span>);
 
         <span class="prelude-val">Ok</span>(())

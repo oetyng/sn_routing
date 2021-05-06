@@ -176,6 +176,9 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="comment">// Copyright 2021 MaidSafe.net limited.</span>
 <span class="comment">//</span>
@@ -186,6 +189,7 @@
 <span class="comment">// permissions and limitations relating to use of the SAFE Network Software.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">section</span>::<span class="ident">SectionChain</span>;
+<span class="kw">use</span> <span class="ident">bls_signature_aggregator</span>::<span class="ident">Proof</span>;
 <span class="kw">use</span> <span class="ident">bytes</span>::<span class="ident">Bytes</span>;
 <span class="kw">use</span> <span class="ident">ed25519_dalek</span>::<span class="ident">Keypair</span>;
 <span class="kw">use</span> <span class="ident">hex_fmt</span>::<span class="ident">HexFmt</span>;
@@ -220,8 +224,6 @@
 <span class="doccomment">/// been reached, i.e. enough members of the section have sent the same message.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">large_enum_variant</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Event</span> {
-    <span class="doccomment">/// The first node of a network.</span>
-    <span class="ident">Genesis</span>,
     <span class="doccomment">/// Received a message.</span>
     <span class="ident">MessageReceived</span> {
         <span class="doccomment">/// The content of the message.</span>
@@ -230,6 +232,8 @@
         <span class="ident">src</span>: <span class="ident">SrcLocation</span>,
         <span class="doccomment">/// The destination location that receives the message.</span>
         <span class="ident">dst</span>: <span class="ident">DstLocation</span>,
+        <span class="doccomment">/// The proof if the message was set to be aggregated at source.</span>
+        <span class="ident">proof</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Proof</span><span class="op">&gt;</span>,
         <span class="doccomment">/// The proof chain for the message, if any.</span>
         <span class="ident">proof_chain</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SectionChain</span><span class="op">&gt;</span>,
     },
@@ -288,12 +292,13 @@
     },
     <span class="doccomment">/// Failed in sending a message to client, or connection to client is lost</span>
     <span class="ident">ClientLost</span>(<span class="ident">SocketAddr</span>),
+    <span class="doccomment">/// Notify the current list of adult nodes, in case of churning.</span>
+    <span class="ident">AdultsChanged</span>(<span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">XorName</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Event</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="self">Self</span>::<span class="ident">Genesis</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">formatter</span>, <span class="string">&quot;Genesis&quot;</span>),
             <span class="self">Self</span>::<span class="ident">MessageReceived</span> {
                 <span class="ident">content</span>, <span class="ident">src</span>, <span class="ident">dst</span>, ..
             } <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(
@@ -351,6 +356,7 @@
                 <span class="ident">msg</span>, <span class="ident">user</span>,
             ),
             <span class="self">Self</span>::<span class="ident">ClientLost</span>(<span class="ident">addr</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">formatter</span>, <span class="string">&quot;ClientLost({:?})&quot;</span>, <span class="ident">addr</span>),
+            <span class="self">Self</span>::<span class="ident">AdultsChanged</span>(<span class="ident">adult_list</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">formatter</span>, <span class="string">&quot;AdultsChanged({:?})&quot;</span>, <span class="ident">adult_list</span>),
         }
     }
 }

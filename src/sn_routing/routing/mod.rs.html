@@ -511,6 +511,24 @@
 <span id="510">510</span>
 <span id="511">511</span>
 <span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="comment">// Copyright 2020 MaidSafe.net limited.</span>
 <span class="comment">//</span>
@@ -524,6 +542,7 @@
 
 <span class="kw">mod</span> <span class="ident">bootstrap</span>;
 <span class="kw">mod</span> <span class="ident">comm</span>;
+<span class="kw">mod</span> <span class="ident">connectivity_complaints</span>;
 <span class="kw">mod</span> <span class="ident">core</span>;
 <span class="kw">mod</span> <span class="ident">dispatcher</span>;
 <span class="kw">mod</span> <span class="ident">enduser_registry</span>;
@@ -543,20 +562,20 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">crypto</span>,
     <span class="ident">error</span>::<span class="prelude-ty">Result</span>,
-    <span class="ident">event</span>::<span class="ident">Event</span>,
+    <span class="ident">event</span>::{<span class="ident">Event</span>, <span class="ident">NodeElderChange</span>},
     <span class="ident">messages</span>::<span class="ident">Message</span>,
     <span class="ident">node</span>::<span class="ident">Node</span>,
     <span class="ident">peer</span>::<span class="ident">Peer</span>,
     <span class="ident">section</span>::{<span class="ident">EldersInfo</span>, <span class="ident">SectionChain</span>},
-    <span class="ident">TransportConfig</span>, <span class="ident">MIN_AGE</span>,
+    <span class="ident">Error</span>, <span class="ident">TransportConfig</span>, <span class="ident">MIN_ADULT_AGE</span>,
 };
 <span class="kw">use</span> <span class="ident">bytes</span>::<span class="ident">Bytes</span>;
-<span class="kw">use</span> <span class="ident">ed25519_dalek</span>::{<span class="ident">Keypair</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">Signer</span>};
+<span class="kw">use</span> <span class="ident">ed25519_dalek</span>::{<span class="ident">Keypair</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">Signer</span>, <span class="ident">KEYPAIR_LENGTH</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">sn_messaging</span>::{
     <span class="ident">client</span>::<span class="ident">Message</span> <span class="kw">as</span> <span class="ident">ClientMessage</span>,
     <span class="ident">node</span>::<span class="ident">NodeMessage</span>,
-    <span class="ident">section_info</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">TargetSectionError</span>, <span class="ident">ErrorResponse</span>, <span class="ident">Message</span> <span class="kw">as</span> <span class="ident">SectionInfoMsg</span>},
+    <span class="ident">section_info</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">TargetSectionError</span>, <span class="ident">Message</span> <span class="kw">as</span> <span class="ident">SectionInfoMsg</span>},
     <span class="ident">DstLocation</span>, <span class="ident">EndUser</span>, <span class="ident">Itinerary</span>, <span class="ident">MessageType</span>, <span class="ident">WireMsg</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net</span>::<span class="ident">SocketAddr</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>};
@@ -607,7 +626,7 @@
     <span class="doccomment">/// caller to handle this case, for example by using a timeout.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">Config</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">EventStream</span>)<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">keypair</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">crypto</span>::<span class="ident">gen_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">Prefix</span>::<span class="ident">default</span>().<span class="ident">range_inclusive</span>(), <span class="ident">MIN_AGE</span> <span class="op">+</span> <span class="number">1</span>)
+            <span class="ident">crypto</span>::<span class="ident">gen_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">Prefix</span>::<span class="ident">default</span>().<span class="ident">range_inclusive</span>(), <span class="ident">MIN_ADULT_AGE</span>)
         });
         <span class="kw">let</span> <span class="ident">node_name</span> <span class="op">=</span> <span class="ident">crypto</span>::<span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>.<span class="ident">public</span>);
 
@@ -615,12 +634,25 @@
         <span class="kw">let</span> (<span class="ident">connection_event_tx</span>, <span class="kw-2">mut</span> <span class="ident">connection_event_rx</span>) <span class="op">=</span> <span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">1</span>);
 
         <span class="kw">let</span> (<span class="ident">state</span>, <span class="ident">comm</span>, <span class="ident">backlog</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">config</span>.<span class="ident">first</span> {
+            <span class="comment">// Genesis node having a fix age of 255.</span>
+            <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">crypto</span>::<span class="ident">gen_keypair</span>(<span class="kw-2">&amp;</span><span class="ident">Prefix</span>::<span class="ident">default</span>().<span class="ident">range_inclusive</span>(), <span class="number">255</span>);
+            <span class="kw">let</span> <span class="ident">node_name</span> <span class="op">=</span> <span class="ident">crypto</span>::<span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>.<span class="ident">public</span>);
+
             <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;{} Starting a new network as the genesis node.&quot;</span>, <span class="ident">node_name</span>);
+
             <span class="kw">let</span> <span class="ident">comm</span> <span class="op">=</span> <span class="ident">Comm</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">transport_config</span>, <span class="ident">connection_event_tx</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">new</span>(<span class="ident">keypair</span>, <span class="ident">comm</span>.<span class="ident">our_connection_info</span>());
             <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">Core</span>::<span class="ident">first_node</span>(<span class="ident">node</span>, <span class="ident">event_tx</span>)<span class="question-mark">?</span>;
 
-            <span class="ident">state</span>.<span class="ident">send_event</span>(<span class="ident">Event</span>::<span class="ident">Genesis</span>);
+            <span class="kw">let</span> <span class="ident">section</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">section</span>();
+
+            <span class="ident">state</span>.<span class="ident">send_event</span>(<span class="ident">Event</span>::<span class="ident">EldersChanged</span> {
+                <span class="ident">prefix</span>: <span class="kw-2">*</span><span class="ident">section</span>.<span class="ident">prefix</span>(),
+                <span class="ident">key</span>: <span class="kw-2">*</span><span class="ident">section</span>.<span class="ident">chain</span>().<span class="ident">last_key</span>(),
+                <span class="ident">sibling_key</span>: <span class="prelude-val">None</span>,
+                <span class="ident">elders</span>: <span class="ident">section</span>.<span class="ident">elders_info</span>().<span class="ident">elders</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
+                <span class="ident">self_status_change</span>: <span class="ident">NodeElderChange</span>::<span class="ident">Promoted</span>,
+            });
 
             (<span class="ident">state</span>, <span class="ident">comm</span>, <span class="macro">vec</span><span class="macro">!</span>[])
         } <span class="kw">else</span> {
@@ -666,6 +698,16 @@
         <span class="self">self</span>.<span class="ident">dispatcher</span>.<span class="ident">clone</span>().<span class="ident">handle_commands</span>(<span class="ident">command</span>).<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// Starts a proposal that a node has gone offline.</span>
+    <span class="doccomment">/// This can be done only by an Elder.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propose_offline</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="ident">XorName</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_elder</span>().<span class="kw">await</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">InvalidState</span>);
+        }
+        <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">Command</span>::<span class="ident">ProposeOffline</span>(<span class="ident">name</span>);
+        <span class="self">self</span>.<span class="ident">dispatcher</span>.<span class="ident">clone</span>().<span class="ident">handle_commands</span>(<span class="ident">command</span>).<span class="kw">await</span>
+    }
+
     <span class="doccomment">/// Returns the current age of this node.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">age</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
         <span class="self">self</span>.<span class="ident">dispatcher</span>.<span class="ident">core</span>.<span class="ident">lock</span>().<span class="kw">await</span>.<span class="ident">node</span>().<span class="ident">age</span>()
@@ -674,6 +716,11 @@
     <span class="doccomment">/// Returns the ed25519 public key of this node.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PublicKey</span> {
         <span class="self">self</span>.<span class="ident">dispatcher</span>.<span class="ident">core</span>.<span class="ident">lock</span>().<span class="kw">await</span>.<span class="ident">node</span>().<span class="ident">keypair</span>.<span class="ident">public</span>
+    }
+
+    <span class="doccomment">/// Returns the ed25519 keypair of this node, as bytes.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">keypair_as_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="ident">KEYPAIR_LENGTH</span>] {
+        <span class="self">self</span>.<span class="ident">dispatcher</span>.<span class="ident">core</span>.<span class="ident">lock</span>().<span class="kw">await</span>.<span class="ident">node</span>().<span class="ident">keypair</span>.<span class="ident">to_bytes</span>()
     }
 
     <span class="doccomment">/// Signs `data` with the ed25519 key of this node.</span>
@@ -842,24 +889,33 @@
             <span class="ident">public_key</span>,
         }) <span class="op">=</span> <span class="ident">itinerary</span>.<span class="ident">dst</span>
         {
-            <span class="kw">let</span> <span class="ident">socket_addr</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">dispatcher</span>
-                .<span class="ident">core</span>
-                .<span class="ident">lock</span>()
-                .<span class="kw">await</span>
-                .<span class="ident">get_socket_addr</span>(<span class="ident">socket_id</span>)
-                .<span class="ident">copied</span>();
+            <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">XorName</span>::<span class="ident">from</span>(<span class="ident">public_key</span>);
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">our_prefix</span>().<span class="kw">await</span>.<span class="ident">matches</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>) {
+                <span class="kw">let</span> <span class="ident">socket_addr</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">dispatcher</span>
+                    .<span class="ident">core</span>
+                    .<span class="ident">lock</span>()
+                    .<span class="kw">await</span>
+                    .<span class="ident">get_socket_addr</span>(<span class="ident">socket_id</span>)
+                    .<span class="ident">copied</span>();
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">socket_addr</span>) <span class="op">=</span> <span class="ident">socket_addr</span> {
-                <span class="kw">return</span> <span class="self">self</span>
-                    .<span class="ident">send_message_to_client</span>(<span class="ident">socket_addr</span>, <span class="ident">ClientMessage</span>::<span class="ident">from</span>(<span class="ident">content</span>)<span class="question-mark">?</span>)
-                    .<span class="kw">await</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">socket_addr</span>) <span class="op">=</span> <span class="ident">socket_addr</span> {
+                    <span class="macro">debug</span><span class="macro">!</span>(
+                        <span class="string">&quot;Sending client msg of {:?} to {:?}&quot;</span>,
+                        <span class="ident">public_key</span>, <span class="ident">socket_addr</span>
+                    );
+                    <span class="kw">return</span> <span class="self">self</span>
+                        .<span class="ident">send_message_to_client</span>(<span class="ident">socket_addr</span>, <span class="ident">ClientMessage</span>::<span class="ident">from</span>(<span class="ident">content</span>)<span class="question-mark">?</span>)
+                        .<span class="kw">await</span>;
+                } <span class="kw">else</span> {
+                    <span class="macro">debug</span><span class="macro">!</span>(
+                        <span class="string">&quot;Could not find socketaddr corresponding to socket_id {:?} and public_key {:?}&quot;</span>,
+                        <span class="ident">socket_id</span>, <span class="ident">public_key</span>
+                    );
+                    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Sending user message instead.. (Command::SendUserMessage)&quot;</span>);
+                }
             } <span class="kw">else</span> {
-                <span class="macro">debug</span><span class="macro">!</span>(
-                    <span class="string">&quot;Could not find socketaddr corresponding to socket_id {:?} and public_key {:?}&quot;</span>,
-                    <span class="ident">socket_id</span>, <span class="ident">public_key</span>
-                );
-                <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Sending user message instead.. (Command::SendUserMessage)&quot;</span>);
+                <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Relaying message with sending user message (Command::SendUserMessage)&quot;</span>);
             }
         }
         <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">Command</span>::<span class="ident">SendUserMessage</span> {
@@ -994,26 +1050,6 @@
                     <span class="kw">return</span>;
                 }
             };
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">client_pk</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">target_section_pk</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bls_pk</span>) <span class="op">=</span> <span class="ident">client_pk</span>.<span class="ident">bls</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span> <span class="ident">dispatcher</span>.<span class="ident">check_key_status</span>(<span class="kw-2">&amp;</span><span class="ident">bls_pk</span>).<span class="kw">await</span> {
-                        <span class="kw">let</span> <span class="ident">correlation_id</span> <span class="op">=</span> <span class="ident">message</span>.<span class="ident">id</span>();
-                        <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">Command</span>::<span class="ident">SendMessage</span> {
-                            <span class="ident">recipients</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">sender</span>],
-                            <span class="ident">delivery_group_size</span>: <span class="number">1</span>,
-                            <span class="ident">message</span>: <span class="ident">MessageType</span>::<span class="ident">SectionInfo</span>(<span class="ident">SectionInfoMsg</span>::<span class="ident">SectionInfoUpdate</span>(
-                                <span class="ident">ErrorResponse</span> {
-                                    <span class="ident">correlation_id</span>,
-                                    <span class="ident">error</span>,
-                                },
-                            )),
-                        };
-                        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">task</span>::<span class="ident">spawn</span>(<span class="ident">dispatcher</span>.<span class="ident">handle_commands</span>(<span class="ident">command</span>));
-                        <span class="kw">return</span>;
-                    }
-                }
-            }
 
             <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">Event</span>::<span class="ident">ClientMessageReceived</span> {
                 <span class="ident">msg</span>: <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">message</span>),
