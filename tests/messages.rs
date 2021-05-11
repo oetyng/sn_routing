@@ -12,9 +12,8 @@ use anyhow::{anyhow, format_err, Result};
 use bytes::Bytes;
 use qp2p::QuicP2p;
 use sn_data_types::Keypair;
-use sn_messaging::client::ProcessMsg;
 use sn_messaging::{
-    client::{ClientMsg, ClientSigned, Query, TransferQuery},
+    client::{BlobRead, ClientMsg, ClientSigned, DataQuery, ProcessMsg, Query},
     location::{Aggregation, Itinerary},
     DstLocation, MessageId, SrcLocation,
 };
@@ -56,9 +55,11 @@ async fn test_messages_client_node() -> Result<()> {
     let (client_endpoint, _, mut incoming_messages, _) = client.new_endpoint().await?;
     client_endpoint.connect_to(&node_addr).await?;
 
+    let random_xor = xor_name::XorName::random();
+    let address = sn_data_types::BlobAddress::Public(random_xor);
     let query = ClientMsg::Process(ProcessMsg::Query {
+        query: Query::Data(DataQuery::Blob(BlobRead::Get(address))),
         id,
-        query: Query::Transfer(TransferQuery::GetBalance(pk)),
         client_signed,
     });
     let query_clone = query.clone();

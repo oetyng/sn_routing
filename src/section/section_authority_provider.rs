@@ -10,7 +10,6 @@ use crate::{peer::Peer, Prefix, XorName};
 use bls::{PublicKey, PublicKeyShare};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sn_data_types::ReplicaPublicKeySet;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet},
@@ -77,7 +76,7 @@ pub struct SectionAuthorityProvider {
 
 impl SectionAuthorityProvider {
     /// Creates a new `SectionAuthorityProvider` with the given members, prefix and public keyset.
-    pub fn new<I>(elders: I, prefix: Prefix, pk_set: ReplicaPublicKeySet) -> Self
+    pub fn new<I>(elders: I, prefix: Prefix, pk_set: bls::PublicKeySet) -> Self
     where
         I: IntoIterator<Item = Peer>,
     {
