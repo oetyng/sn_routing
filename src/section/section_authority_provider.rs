@@ -7,7 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{peer::Peer, Prefix, XorName};
-use bls::{PublicKey, PublicKeyShare};
+use bls::{PublicKey, PublicKeySet, PublicKeyShare};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -76,7 +76,7 @@ pub struct SectionAuthorityProvider {
 
 impl SectionAuthorityProvider {
     /// Creates a new `SectionAuthorityProvider` with the given members, prefix and public keyset.
-    pub fn new<I>(elders: I, prefix: Prefix, pk_set: bls::PublicKeySet) -> Self
+    pub fn new<I>(elders: I, prefix: Prefix, pk_set: PublicKeySet) -> Self
     where
         I: IntoIterator<Item = Peer>,
     {
@@ -93,10 +93,7 @@ impl SectionAuthorityProvider {
     }
 
     /// Creates a new `SectionAuthorityProvider` from ElderCandidates and public keyset.
-    pub fn from_elder_candidates(
-        elder_candidates: ElderCandidates,
-        pk_set: ReplicaPublicKeySet,
-    ) -> Self {
+    pub fn from_elder_candidates(elder_candidates: ElderCandidates, pk_set: PublicKeySet) -> Self {
         let elders = elder_candidates
             .elders
             .iter()
